@@ -25,5 +25,10 @@ urlpatterns = [
         'finalize-payout',
         wallet_views.FinalizePayoutAPIView.as_view(),
         name='finalize-payout'
+    ),
+    path(
+        'payout-with-paymob',
+        wallet_views.PaymobTransferAPIView.as_view(),
+        name='payout-with-paymob'
     )
 ]

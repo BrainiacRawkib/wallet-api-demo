@@ -24,3 +24,10 @@ class PayoutSerializer(serializers.Serializer):  # noqa
 class FinalizePayoutSerializer(serializers.Serializer):  # noqa
     transfer_code = serializers.IntegerField()
     otp = serializers.IntegerField()
+
+
+class PaymobTransferSerializer(serializers.Serializer):  # noqa
+    email = serializers.EmailField()
+    amount = serializers.IntegerField()
+    issuer = serializers.CharField()
+    msisdn = serializers.CharField()

@@ -1,13 +1,15 @@
 from apis.base import responses as base_repo_responses, views as base_repo_views
 from apis.wallets import models as wallet_models, serializers as wallet_serializers
 from apis.users import models as user_models
-
+from external_apis.payments.paymob import instant_cashin_api
 from external_apis.payments.paystack import transfer_api, transfer_recipient_api
 
 
 PaystackTransferAPIClient = transfer_api.TransferAPIClient()
 
 PaystackTransferRecipientAPIClient = transfer_recipient_api.TransferRecipientAPIClient()
+
+PaymobTransferAPIClient = instant_cashin_api.InstantCashinAPIClient()
 
 
 class CreateTransferRecipientAPIView(base_repo_views.CustomGenericAPIView):
@@ -161,5 +163,59 @@ class FinalizePayoutAPIView(base_repo_views.CustomGenericAPIView):
             )
         except Exception as e:
             self._log.error('FinalizePayoutAPIView.post@Error')
+            self._log.error(e)
+            return base_repo_responses.http_response_500(self.server_error_msg)
+
+
+class PaymobTransferAPIView(base_repo_views.CustomGenericAPIView):
+
+    def post(self, request, *args, **kwargs):
+        try:
+            serializer = wallet_serializers.PaymobTransferSerializer(
+                data=request.data
+            )
+            if serializer.is_valid():
+                data = serializer.validated_data
+                email = data['email']
+                amount = data['amount']
+                issuer = data['issuer']
+                msisdn = data['msisdn']
+
+                user = user_models.User.get_by_email(email)
+                if not user:
+                    return base_repo_responses.http_response_404(
+                        'User does not exist!'
+                    )
+
+                wallet = wallet_models.Wallet.get_by_user_id(user.id)
+                if not wallet:
+                    return base_repo_responses.http_response_404(
+                        'Wallet does not exist!'
+                    )
+
+                if not wallet.can_transact(int(amount)):
+                    return base_repo_responses.http_response_400(
+                        'Insufficient funds!'
+                    )
+
+                payload = {
+                    'amount': amount,
+                    'issuer': issuer,
+                    'msisdn': msisdn
+                }
+                status_code, response = PaymobTransferAPIClient.disburse(payload)
+                if response['disbursement_status'] == 'success':
+                    wallet.deduct_balance(amount).save()
+                    return base_repo_responses.http_response_200(
+                        'Transfer successful!'
+                    )
+                return base_repo_responses.http_response_500(
+                    self.server_error_msg
+                )
+            return base_repo_responses.http_response_400(
+                'Bad request!', errors=serializer.errors
+            )
+        except Exception as e:
+            self._log.error('PaymobTransferAPIView.post@Error')
             self._log.error(e)
             return base_repo_responses.http_response_500(self.server_error_msg)

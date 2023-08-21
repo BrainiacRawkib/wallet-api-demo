@@ -134,6 +134,20 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Paymob Credentials
+
+PAYMOB_BASE_URL = env_config['PAYMOB_BASE_URL']
+
+PAYMOB_CLIENT_ID = env_config['PAYMOB_CLIENT_ID']
+
+PAYMOB_CLIENT_SECRET = env_config['PAYMOB_CLIENT_SECRET']
+
+PAYMOB_USERNAME = env_config['PAYMOB_USERNAME']
+
+PAYMOB_PASSWORD = env_config['PAYMOB_PASSWORD']
+
+# Paystack Credentials
+
 PAYSTACK_BASE_URL = env_config['PAYSTACK_BASE_URL']
 
 PAYSTACK_SECRET_KEY = env_config['PAYSTACK_SECRET_KEY']
