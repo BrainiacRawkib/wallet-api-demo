@@ -33,7 +33,8 @@ class CreateTransferRecipientAPIView(base_repo_views.CustomGenericAPIView):
                 status_code, response = PaystackTransferRecipientAPIClient.transfer_recipient(
                     account_name, account_number, bank_code
                 )
-                if status_code == 200:
+
+                if status_code == 201:
                     recipient_code = response['data']['recipient_code']
                     wallet_payload = {
                         'user_id': user.id,
@@ -74,6 +75,16 @@ class TransferAPIView(base_repo_views.CustomGenericAPIView):
 
                 sender_wallet = wallet_models.Wallet.get_by_user_id(sender.id)
                 receiver_wallet = wallet_models.Wallet.get_by_user_id(receiver.id)
+
+                if not sender_wallet:
+                    return base_repo_responses.http_response_404(
+                        'Sender wallet does not exist!'
+                    )
+
+                if not receiver_wallet:
+                    return base_repo_responses.http_response_404(
+                        'Receiver wallet does not exist!'
+                    )
 
                 if not sender_wallet.can_transact(int(amount)):
                     return base_repo_responses.http_response_400(
@@ -116,6 +127,12 @@ class PayoutAPIView(base_repo_views.CustomGenericAPIView):
                     return base_repo_responses.http_response_404(
                         'Wallet does not exist!'
                     )
+
+                if not wallet.can_transact(int(amount)):
+                    return base_repo_responses.http_response_400(
+                        'Insufficient funds!'
+                    )
+
                 transfer_payload = {
                     'reason': description,
                     'amount': amount,
@@ -123,9 +140,14 @@ class PayoutAPIView(base_repo_views.CustomGenericAPIView):
                 }
                 status, response = PaystackTransferAPIClient.transfer(transfer_payload)
                 if status == 200:
-
+                    transfer_code = response['data']['transfer_code']
+                    transfer_payload = {
+                        'transfer_code': transfer_code,
+                        'wallet_id': wallet.id
+                    }
+                    wallet_models.TransferCode.create(transfer_payload).save()
                     return base_repo_responses.http_response_200(
-                        'Payout successful!'
+                        response['message']
                     )
                 return base_repo_responses.http_response_500(
                     self.server_error_msg
@@ -150,8 +172,18 @@ class FinalizePayoutAPIView(base_repo_views.CustomGenericAPIView):
                 data = serializer.validated_data
                 transfer_code = data['transfer_code']
                 otp = data['otp']
+                trf_code = wallet_models.TransferCode.get_by_transfer_code(transfer_code)
+
+                if not trf_code:
+                    return base_repo_responses.http_response_400(
+                        'Invalid transfer code!'
+                    )
+
+                wallet = wallet_models.Wallet.get_by_id(trf_code.wallet_id)
                 status, response = PaystackTransferAPIClient.finalize_transfer(transfer_code, otp)
                 if status == 200:
+                    amount = response['data']['amount']
+                    wallet.deduct_balance(amount).save()
                     return base_repo_responses.http_response_200(
                         response['message']
                     )

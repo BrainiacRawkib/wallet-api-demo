@@ -27,7 +27,7 @@ class TransferAPIClient(PaystackBaseAPIClient):
     def finalize_transfer(self, transfer_code: str, otp: str):
         try:
             req = self.create_request_session()
-            url = f'{self.transfer_base_url()}'
+            url = f'{self.transfer_base_url()}/finalize_transfer'
             data = {
                 'transfer_code': transfer_code,
                 'otp': otp

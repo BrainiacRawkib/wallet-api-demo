@@ -100,3 +100,23 @@ class TransactionHistory(models.Model):
             old_balance=payload.get('old_balance', 0),
             description=payload.get('description', '')
         )
+
+
+class TransferCode(models.Model):
+    id = models.CharField(primary_key=True, default=f'trf_code_{uuid4().hex}', max_length=100)
+    transfer_code = models.CharField(max_length=100, default="")
+    wallet_id = models.CharField(max_length=100, default="")
+
+    @staticmethod
+    def create(payload: dict):
+        return TransferCode(
+            transfer_code=payload.get('transfer_code', ''),
+            wallet_id=payload.get('wallet_id', '')
+        )
+
+    @staticmethod
+    def get_by_transfer_code(code: str):
+        try:
+            return TransferCode.objects.get(transfer_code=code)
+        except (Exception, TransferCode.DoesNotExist):
+            return None
